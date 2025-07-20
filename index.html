@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>運用表全画面表示＋時計</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      background-color: black;
+      color: lime;
+      font-family: "Courier New", monospace;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #clock {
+      font-size: 3vw;
+      text-align: center;
+      background: #111;
+      padding: 1vh;
+      box-shadow: 0 0 10px lime;
+    }
+
+    #image-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    #image-container img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 0 20px lime;
+    }
+
+    #upload {
+      background: #111;
+      padding: 1vh;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      padding: 6px;
+      background: #222;
+      border: 1px solid limegreen;
+      color: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      #clock {
+        font-size: 5vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="clock">--:--:--.--</div>
+
+  <div id="image-container">
+    <img id="mainImage" src="" alt="運用表画像">
+  </div>
+
+  <div id="upload">
+    <label>画像を変更：</label>
+    <input type="file" id="imageInput" accept="image/*">
+  </div>
+
+  <script>
+    // 時計表示
+    let baseTime = null;
+    let basePerf = null;
+
+    async function syncTime() {
+      try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Tokyo');
+        const data = await res.json();
+        baseTime = new Date(data.datetime);
+        basePerf = performance.now();
+      } catch (err) {
+        document.getElementById('clock').innerText = '時刻取得失敗';
+      }
+    }
+
+    function updateClock() {
+      if (!baseTime || !basePerf) return;
+      const nowPerf = performance.now();
+      const diff = nowPerf - basePerf;
+      const current = new Date(baseTime.getTime() + diff);
+      const h = String(current.getHours()).padStart(2, '0');
+      const m = String(current.getMinutes()).padStart(2, '0');
+      const s = String(current.getSeconds()).padStart(2, '0');
+      const ms = String(current.getMilliseconds()).padStart(3, '0').slice(0, 1);
+      document.getElementById('clock').innerText = `${h}:${m}:${s}.${ms}`;
+    }
+
+    syncTime();
+    setInterval(syncTime, 60000);
+    setInterval(updateClock, 100);
+
+    // 画像アップロード＆保存
+    const imageInput = document.getElementById('imageInput');
+    const mainImage = document.getElementById('mainImage');
+
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        mainImage.src = dataUrl;
+        localStorage.setItem('timetableImage', dataUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const savedImage = localStorage.getItem('timetableImage');
+    if (savedImage) {
+      mainImage.src = savedImage;
+    } else {
+      mainImage.src = "data:image/png;base64,{{IMAGE_BASE64}}"; // 任意で埋め込み可
+    }
+  </script>
+</body>
+</html>
